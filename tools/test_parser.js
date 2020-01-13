@@ -1,27 +1,62 @@
-var fs = require('fs');
-var parser = require('../src/parser');
-var execSync = require('child_process').execSync;
-var utils = require('utils')
+try {
+  process.chdir("./tools");
+} catch (e) {}
 
-function runExample(lang,name){
-	var txt = fs.readFileSync("../examples/"+name+".txt").toString();
-	var js = parser.compile(lang,txt,{romanizeIdentifiers:true})
-	console.log("=== EVAL ===")
-	if (lang == "py"){
-		console.log(pyeval(js))
-	}else if (lang == "js"){
-		eval(js);
-	}
+var fs = require("fs");
+var parser = require("../src/parser");
+var execSync = require("child_process").execSync;
+var utils = require("./utils");
+
+function readOtherExample(x) {
+  return fs.readFileSync("../examples/" + x + ".wy").toString();
 }
 
-function runAll(lang){
-
-	var files = fs.readdirSync("../examples/");
-	console.log(files);
-	for (var i = 0; i < files.length; i++){
-		runExample(lang,files[i].split(".")[0]);
-	}
+function runExample(lang, name) {
+  var txt = fs.readFileSync("../examples/" + name + ".wy").toString();
+  var sourceCode = parser.compile(lang, txt, {
+    romanizeIdentifiers: "none", //true,
+    lib: utils.loadlib(),
+    reader: readOtherExample,
+    strict: true,
+    errorCallback: () => 0
+    // logCallback: ()=>0,
+  });
+  console.log("=== COMPILED ===");
+  console.log(sourceCode);
+  console.log("=== EVAL ===");
+  switch (lang) {
+    case "py":
+      console.log(utils.pyeval(sourceCode));
+      break;
+    case "js":
+      parser.evalCompiled(sourceCode);
+      break;
+    case "rb":
+      console.log(utils.rbeval(sourceCode));
+      break;
+    default:
+      break;
+  }
 }
 
-runExample("py","quicksort")
-// runAll("py")
+function runAll(lang, skips = []) {
+  var files = fs.readdirSync("../examples/").filter(x => x.endsWith(".wy"));
+  console.log(files);
+  for (var i = 0; i < files.length; i++) {
+    if (skips.includes(files[i].split(".")[0])) {
+      console.log("SKIPPED");
+      continue;
+    }
+    console.log(`======= Progress ${i + 1}/${files.length} =======`);
+    runExample(lang, files[i].split(".")[0]);
+  }
+}
+
+// runExample("js", "import");
+// runExample("js", "../lib/js/畫譜");
+// runExample("js", "../lib/曆法");
+// runAll("js", ["quine", "quine2", "tree", "tree2", "try"]);
+// runAll("js", ["quine"]);
+
+runExample("js", "../../../Downloads/local_test");
+// runExample("py", "draw_heart");
